@@ -1,4 +1,4 @@
-transformers
-torch
-datasets
-transformers[torch]
+transformers==4.50.3
+torch==2.6.0
+datasets==3.5.0
+transformers[torch]==4.50.3

@@ -14,12 +14,12 @@ from datasets import load_dataset
 ###
 # Questions:
 # 1  What is missing in the code?  The tokenization of the dataset
-# 2. Add a pad token to the tokenizer (you should also change the embedding size of the model)
 # 2. Set the context length to 64 tokens
 # 3. Set the batch size to 8
-# 4. Set the padding size appropriately for training
+# 4. Set the padding side appropriately for training
 # 5. Set the learning rate to 2e-5
 # 6. Change the default optimizer (e.g."galore")
+# 2. Add a pad token to the tokenizer (you should also change the embedding size of the model)
 # 7. Add a collator with dynamic padding
 # 8. Add a custom trainer and set the optimizer to AdamW and LinearLR scheduler
 # 9. Add a custom sampler to the custom trainer
@@ -83,7 +83,8 @@ def tokenize_function(examples):
         padding_side="right",
     )
     labels = tokenized["input_ids"].copy()
-    tokenized["labels"] = labels[1:] + [-100]  # Shift labels one position to the right
+    tokenized["labels"] = [l_i[1:]+ [-100] for l_i in labels]  # Shift labels one position to the right
+
     
     ## The following line misses the shift of the labels (this could be a question to the candidate)
     #tokenized["labels"] = tokenized["input_ids"].copy()
@@ -104,7 +105,7 @@ eval_dataset = tokenized_datasets["validation"]
 # Define training arguments
 training_args = TrainingArguments(
     output_dir="./results",
-    evaluation_strategy="epoch",
+    eval_strategy="epoch",
     learning_rate=2e-5,
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
@@ -115,14 +116,14 @@ training_args = TrainingArguments(
     logging_steps=10,
     save_steps=500,
     optim="adamw_torch",
-    no_cuda=True,  # Force training on CPU
+    use_cpu=True,  # Force training on CPU
 )
 
 # Define the data collator
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
 model = AutoModelForCausalLM.from_pretrained(model_name)
-# model.resize_token_embeddings(len(tokenizer))
+model.resize_token_embeddings(len(tokenizer))
 
 optimizer = Adam(model.parameters(), lr=2e-5)
 lr_scheduler = LinearLR(optimizer)

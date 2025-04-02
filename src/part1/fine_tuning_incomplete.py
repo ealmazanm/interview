@@ -1,16 +1,19 @@
-import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
 from datasets import load_dataset
 
 ###
 # Questions:
-# 1 What is missing in the code?
+# 1  What is missing in the code?  The tokenization of the dataset
 # 2. Set the context length to 64 tokens
-# 2. Set the batch size to 8
-# 3. Set the padding size appropriately for training
-# 3. Set the learning rate to 2e-5
-# 4. Change the default optimizer (e.g."galore")
-# 5. Add a collator with dynamic padding
+# 3. Set the batch size to 8
+# 4. Set the padding side appropriately for training
+# 5. Set the learning rate to 2e-5
+# 6. Change the default optimizer (e.g."galore")
+# 7. Add a pad token to the tokenizer (you should also change the embedding size of the model)
+# 8. Add a collator with dynamic padding
+# 9. Add a custom trainer and set the optimizer to AdamW and LinearLR scheduler
+# 10. Add a custom sampler to the custom trainer
+
 
 
 # Load pre-trained model and tokenizer
