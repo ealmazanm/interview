@@ -7,8 +7,9 @@ from datasets import load_dataset
 # 1 What is missing in the code?
 # 2. Set the context length to 64 tokens
 # 2. Set the batch size to 8
+# 3. Set the padding size appropriately for training
 # 3. Set the learning rate to 2e-5
-# 4. Set the optimizer to "adam"
+# 4. Change the default optimizer (e.g."galore")
 # 5. Add a collator with dynamic padding
 
 
@@ -18,7 +19,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 # Prepare dataset
 def tokenize_function(examples):
-    return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
+    return tokenizer(examples["text"], padding="max_length", truncation=True)
 
 dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
 

@@ -2,19 +2,34 @@ from torch.utils.data import Sampler
 from torch.optim import Adam, AdamW
 from torch.optim.lr_scheduler import LinearLR
 from torch.utils.data import DataLoader
-from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments, DataCollatorWithPadding
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    Trainer,
+    TrainingArguments,
+    DataCollatorWithPadding,
+)
 from datasets import load_dataset
 
 ###
 # Questions:
-# 1 What is missing in the code?
+# 1  What is missing in the code?  The tokenization of the dataset
+# 2. Add a pad token to the tokenizer (you should also change the embedding size of the model)
 # 2. Set the context length to 64 tokens
-# 2. Set the batch size to 8
-# 3. Set the learning rate to 2e-5
-# 4. Set the optimizer to "adam"
-# 5. Add a custom trainer and set the optimizer to AdamW
+# 3. Set the batch size to 8
+# 4. Set the padding size appropriately for training
+# 5. Set the learning rate to 2e-5
+# 6. Change the default optimizer (e.g."galore")
+# 7. Add a collator with dynamic padding
+# 8. Add a custom trainer and set the optimizer to AdamW and LinearLR scheduler
+# 9. Add a custom sampler to the custom trainer
 
-
+## Issues:
+# 1. If you add a pad token to the tokenizer but do not resize the model's token embeddings, you will get an error.
+#### IndexError: index out of range in self
+# 2. If you do not add labels to the tokenized dataset, you will get the following error:
+#### ValueError: The model did not return a loss from the inputs, only the following keys: logits,past_key_values. For reference, the inputs it received are input_ids,attention_mask.
+# 3. To add the labels into the tokenized dataset, you need to shift the labels one position to the right.
 
 
 class CustomSampler(Sampler):
@@ -42,26 +57,45 @@ class CustomTrainer(Trainer):
             sampler=train_sampler,
             collate_fn=self.data_collator,
         )
-        
 
     def create_optimizer_and_scheduler(self, num_training_steps):
-        self.optimizer = AdamW(self.model.parameters(),
-                               lr=self.args.learning_rate,
-                               weight_decay=self.args.weight_decay)
-        self.lr_scheduler = LinearLR(
-            self.optimizer, 0, num_training_steps, power=2)
+        self.optimizer = AdamW(
+            self.model.parameters(),
+            lr=self.args.learning_rate,
+            weight_decay=self.args.weight_decay,
+        )
+        self.lr_scheduler = LinearLR(self.optimizer, 0, num_training_steps, power=2)
 
 
 # Load pre-trained model and tokenizer
 model_name = "openai-community/gpt2"  # Replace with the model you want to fine-tune
 tokenizer = AutoTokenizer.from_pretrained(model_name)
+tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+
 
 # Prepare dataset
 def tokenize_function(examples):
-    return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=128)
+    tokenized = tokenizer(
+        examples["text"],
+        padding="max_length",
+        truncation=True,
+        max_length=15,
+        padding_side="right",
+    )
+    labels = tokenized["input_ids"].copy()
+    tokenized["labels"] = labels[1:] + [-100]  # Shift labels one position to the right
+    
+    ## The following line misses the shift of the labels (this could be a question to the candidate)
+    #tokenized["labels"] = tokenized["input_ids"].copy()
+    
+    
+    return tokenized
+
 
 dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
-tokenized_datasets = dataset.map(tokenize_function, batched=True, remove_columns=["text"])
+tokenized_datasets = dataset.map(
+    tokenize_function, batched=True, remove_columns=["text"]
+)
 
 # Split dataset
 train_dataset = tokenized_datasets["train"]
@@ -80,12 +114,15 @@ training_args = TrainingArguments(
     logging_dir="./logs",
     logging_steps=10,
     save_steps=500,
+    optim="adamw_torch",
+    no_cuda=True,  # Force training on CPU
 )
 
 # Define the data collator
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
 model = AutoModelForCausalLM.from_pretrained(model_name)
+# model.resize_token_embeddings(len(tokenizer))
 
 optimizer = Adam(model.parameters(), lr=2e-5)
 lr_scheduler = LinearLR(optimizer)
@@ -97,7 +134,7 @@ trainer = CustomTrainer(
     args=training_args,
     train_dataset=train_dataset,
     eval_dataset=eval_dataset,
-    data_collator=data_collator
+    data_collator=data_collator,
 )
 
 
@@ -107,8 +144,8 @@ trainer = Trainer(
     args=training_args,
     train_dataset=train_dataset,
     eval_dataset=eval_dataset,
-    optimizers=(optimizer, lr_scheduler),
-    data_collator=data_collator
+    # optimizers=(optimizer, lr_scheduler),
+    # data_collator=data_collator
 )
 
 # Fine-tune the model
