@@ -13,16 +13,21 @@ from datasets import load_dataset
 
 ###
 # Questions:
-# 1  What is missing in the code?  The tokenization of the dataset
-# 2. Set the context length to 64 tokens
-# 3. Set the batch size to 8
-# 4. Set the padding side appropriately for training
-# 5. Set the learning rate to 2e-5
-# 6. Change the default optimizer (e.g."galore")
-# 2. Add a pad token to the tokenizer (you should also change the embedding size of the model)
-# 7. Add a collator with dynamic padding
-# 8. Add a custom trainer and set the optimizer to AdamW and LinearLR scheduler
-# 9. Add a custom sampler to the custom trainer
+# 1  What is missing in the code? -- The tokenization of the dataset
+# 2. Set the context length to 64 tokens. -- in the tokenization
+# 3. Set the batch size to 8 -- trainingArgs
+# 4. Set the padding side appropriately for training -- In the tokenization set padding_side="right"
+# 5. Set the learning rate to 2e-5 -- trainingArgs
+# 6. What optimizer is used? -- default in the trainingArgs: adamw_torch
+# 7. Change the default optimizer (e.g."galore") -- In the trainingArgs (optim) or in the optimizers argument of the trainer.
+# 8. Add a pad token to the tokenizer -- you should also change the embedding size of the model
+# 9. What datacollator is used? -- DefaultDataCollator (because we are not passing the tokenizer to the trainer)
+# 10. Add a collator with dynamic padding
+# 11. Add a custom trainer and set the optimizer to AdamW and LinearLR scheduler
+# 12. Add a custom sampler to the custom trainer
+
+
+
 
 ## Issues:
 # 1. If you add a pad token to the tokenizer but do not resize the model's token embeddings, you will get an error.
@@ -115,7 +120,6 @@ training_args = TrainingArguments(
     logging_dir="./logs",
     logging_steps=10,
     save_steps=500,
-    optim="adamw_torch",
     use_cpu=True,  # Force training on CPU
 )
 
